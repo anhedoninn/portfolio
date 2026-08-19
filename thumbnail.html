@@ -1,0 +1,55 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Thumbnail renderer</title>
+    <script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+    <style>
+      html,body{height:100%;margin:0;background:transparent}
+      .stage{width:900px;height:900px;display:grid;place-items:center;background:transparent}
+      model-viewer{width:800px;height:800px;border-radius:8px;background:transparent}
+    </style>
+  </head>
+  <body>
+    <div class="stage">
+      <model-viewer id="mv" alt="thumbnail" camera-controls autoplay exposure="1" shadow-intensity="1"></model-viewer>
+    </div>
+    <script>
+      function getParam(name){
+        const params = new URLSearchParams(location.search);
+        return params.get(name);
+      }
+      const src = getParam('model') || '';
+      const mv = document.getElementById('mv');
+      if(src) mv.src = src;
+      // ensure we can render a frame
+      function waitForCanvas(){
+        return new Promise((resolve)=>{
+          const interval = setInterval(()=>{
+            const root = mv.shadowRoot;
+            if(!root) return;
+            const canvas = root.querySelector('canvas');
+            if(canvas && canvas.width>0 && canvas.height>0){
+              clearInterval(interval);
+              resolve(canvas);
+            }
+          },200);
+          // timeout
+          setTimeout(()=>{ clearInterval(interval); resolve(null); },10000);
+        });
+      }
+      window.renderThumbnail = async function(){
+        const canvas = await waitForCanvas();
+        if(!canvas) return null;
+        // draw to temp canvas to control size
+        const w = 800, h = 800;
+        const tmp = document.createElement('canvas'); tmp.width=w; tmp.height=h;
+        const ctx = tmp.getContext('2d');
+        // copy WebGL canvas
+        ctx.drawImage(canvas, 0, 0, w, h);
+        return tmp.toDataURL('image/jpeg', 0.92);
+      }
+    </script>
+  </body>
+</html>
